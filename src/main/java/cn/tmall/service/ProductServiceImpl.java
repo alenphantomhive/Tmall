@@ -1,0 +1,96 @@
+package cn.tmall.service;
+
+import cn.tmall.mapper.ProductMapper;
+import cn.tmall.pojo.Category;
+import cn.tmall.pojo.Product;
+import cn.tmall.pojo.ProductExample;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * ProductService 实现类
+ *
+ */
+@Service
+public class ProductServiceImpl implements cn.tmall.service.ProductService {
+
+	@Autowired
+	ProductMapper productMapper;
+
+	@Autowired
+	cn.tmall.service.ReviewService reviewService;
+
+	@Override
+	public void add(Product product) {
+		productMapper.insert(product);
+	}
+
+	@Override
+	public void delete(Integer id) {
+		productMapper.deleteByPrimaryKey(id);
+	}
+
+	@Override
+	public void update(Product product) {
+		productMapper.updateByPrimaryKey(product);
+	}
+
+	@Override
+	public Product get(Integer id) {
+		return productMapper.selectByPrimaryKey(id);
+	}
+
+	@Override
+	public List<Product> list(Integer category_id) {
+		ProductExample example = new ProductExample();
+		example.or().andCategory_idEqualTo(category_id);
+		List<Product> products = productMapper.selectByExample(example);
+		return products;
+	}
+
+	@Override
+	public void fill(List<Category> categories) {
+		for (Category category : categories) {
+			fill(category);
+		}
+	}
+
+	@Override
+	public void fill(Category category) {
+		List<Product> products = list(category.getId());
+		category.setProducts(products);
+	}
+
+	@Override
+	public void fillByRow(List<Category> categories) {
+		int productNumberOfEachRow = 8;
+		for (Category category : categories) {
+			List<Product> products = category.getProducts();
+			List<List<Product>> productByRow = new ArrayList<>();
+			for (int i = 0; i < products.size(); i += productNumberOfEachRow) {
+				int size = i + productNumberOfEachRow;
+				size = size > products.size() ? products.size() : size;
+				List<Product> productsOfEachRow = products.subList(i, size);
+				productByRow.add(productsOfEachRow);
+			}
+			category.setProductByRow(productByRow);
+		}
+	}
+
+	@Override
+	public void setReviewCount(Product product) {
+		int reviewCount = reviewService.getCount(product.getId());
+		product.setReviewCount(reviewCount);
+	}
+
+	@Override
+	public List<Product> search(String keyword) {
+		ProductExample example = new ProductExample();
+		example.or().andNameLike("%" + keyword + "%");
+		example.setOrderByClause("id desc");
+		return productMapper.selectByExample(example);
+	}
+}
